@@ -1,69 +1,56 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-
+using mvc.Data;
 using mvc.Models;
 
 public class TeacherController : Controller
 {
-    // liste d'enseignants
-    private static List<Teacher> _teachers = new List<Teacher>
-    {
-        new Teacher { Id = 1, Lastname = "Doe", Firstname = "John" },
-        new Teacher { Id = 2, Lastname = "Smith", Firstname = "Jane" }
-    };
+    private readonly UserManager<Teacher> _userManager;
 
-
-    public IActionResult Index()
+    public TeacherController(UserManager<Teacher> userManager)
     {
-        return View(_teachers);
+        _userManager = userManager;
     }
 
-    // Ecrire une liste d'Actions
+    // Afficher tous les enseignants
+    public async Task<IActionResult> Index()
+    {
+        // Récupérer tous les enseignants depuis la base
+        var teachers = _userManager.Users.ToList();
+        return View(teachers);
+    }
 
-
-    // Ajouter un Teacher
-    // Accessible via /Teacher/Add en GET affichera le formulaire
+    // Ajouter un Teacher (GET)
     [HttpGet]
     public IActionResult Add()
     {
         return View();
     }
 
-    // Accessible via /Teacher/Add en POST ajoutera le teacher
+    // Ajouter un Teacher (POST)
     [HttpPost]
-    public IActionResult Add(Teacher teacher)
+    public async Task<IActionResult> Add(Teacher teacher)
     {
-        // Declencher le mecanisme de validation
         if (!ModelState.IsValid)
         {
-            return View();
+            return View(teacher);
         }
-        // Ajouter le teacher
-        _teachers.Add(teacher);
-        return RedirectToAction("Index");
-    }
 
-    // Supprimer un Teacher
+        // Créer l'enseignant avec un mot de passe par défaut (modifiable ensuite)
+        var result = await _userManager.CreateAsync(teacher, "DefaultPassword123!");
 
-    // Afficher le détail d'un teacher
-    // Accessible via /Teacher/ShowDetails/10
-    public IActionResult ShowDetails(int id)
-    {
-        Teacher teacher = new Teacher();
-        if (id == 10)
+        if (result.Succeeded)
         {
-            teacher.Firstname = "John";
-            teacher.Lastname = "Doe";
-            teacher.Id = 10;
+            // Rediriger vers la liste des enseignants
+            return RedirectToAction("Index");
         }
-        else
+
+        // Si l'ajout échoue, ajouter les erreurs au modèle
+        foreach (var error in result.Errors)
         {
-            teacher.Firstname = "Jane";
-            teacher.Lastname = "Smith";
-            teacher.Id = 20;
+            ModelState.AddModelError(string.Empty, error.Description);
         }
+
         return View(teacher);
     }
-
-    // Afficher tous les Teachers
-
 }
